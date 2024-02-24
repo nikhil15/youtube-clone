@@ -73,19 +73,20 @@ userSchema.methods.generateAccessToken = function() {
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
-            expiresIn: ACCESS_TOKEN_EXPIRY
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY
         }
     )
 }
 
-userSchema.methods.refreshAccessToken = async function() {
+// session storage
+userSchema.methods.generateRefreshToken  = async function() {
     return jwt.sign(
         {
             _id: this._id
         },
-        process.env.RERESH_TOKEN_SECRET,
+        process.env.REFRESH_TOKEN_SECRET,
         {
-            expiresIn: RERESH_TOKEN_EXPIRY
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
         }
     )
 }
