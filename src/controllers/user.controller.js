@@ -5,20 +5,19 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { apiResponse } from "../utils/apiResponse.js"
 import jwt from "jsonwebtoken"
 
-const generateAccessAndRefreshTokens = async (userId) => {
+const generateAccessAndRefreshTokens = async(userId) => {
     try {
-        
         const user = await User.findById(userId)
         const accessToken = user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
-        
-        user.refreshToken = refreshToken
-        await user.save({validateBeforeSave: false})
 
-        return { accessToken, refreshToken }
+        user.refreshToken = refreshToken
+        await user.save({ validateBeforeSave: false })
+
+        return {accessToken, refreshToken}
 
     } catch (error) {
-        throw new apiError(500, "Something went wrong while generating refresh and access token")
+        throw new ApiError(500, "Something went wrong while generating referesh and access token")
     }
 }
 
@@ -39,7 +38,7 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     const avatarLocalPath = req.files?.avatar[0]?.path
-    const coverImageLocalPath = res?.files?.coverImage?.[0]?.path
+    const coverImageLocalPath = req.files?.coverImage[0]?.path
 
     if(!avatarLocalPath) {
         throw new apiError(409, "Avtar file is required")
@@ -61,9 +60,7 @@ const registerUser = asyncHandler( async (req, res) => {
         username: username.toLowerCase()
     })
 
-    const createdUser = await User.findById(user._id).select(
-        "-password -refreshToken"     
-    )
+    const createdUser = await User.findById(user._id).select( "-password -refreshToken")
 
     if(!createdUser) {
         throw new apiError(500, "Something went wrong while registering the user account")
@@ -99,7 +96,7 @@ const loginUser = asyncHandler( async(req, res) => {
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
 
-    const loggedInUser = User.findById(user._id).select("-password -refreshToken")
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
     const options = {
         httpOnly: true,
@@ -138,8 +135,8 @@ const logoutUser = asyncHandler(async(req, res) => {
 const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
-        
-    if(incomingRefreshToken) {
+
+    if(!incomingRefreshToken) {
         throw new apiError(401, "Unauthorized request")
     }
 
