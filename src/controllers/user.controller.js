@@ -116,7 +116,7 @@ const logoutUser = asyncHandler(async(req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: { refreshToken: undefined }
+            $unset: { refreshToken: 1 } //this removes the field form document
         }, 
         {
             new: true
@@ -183,7 +183,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     }
 
     user.password = newPassword
-    await user.save({validateBeforeSave})
+    await user.save({validateBeforeSave: false})
     
     return res.status(200).json(new apiResponse(200, {}, "Password changed successfully"))
 })
@@ -215,7 +215,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200, user, "Account details updated successfully"))
 })
 
-const updateAvatar = asyncHandler(async (req, res) => {
+const updateUserAvatar = asyncHandler(async (req, res) => {
     
     const avatarLocalPath = req.file?.path
 
@@ -241,7 +241,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
     return res.status(200).json(new apiResponse(200, user, "Avatar successfully updated"))
 })
 
-const updateCover = asyncHandler(async (req, res) => {
+const updateUserCoverImage = asyncHandler(async (req, res) => {
     
     const coverLocalPath = req.file?.path
 
@@ -266,7 +266,6 @@ const updateCover = asyncHandler(async (req, res) => {
 
     return res.status(200).json(new apiResponse(200, user, "Cover successfully updated"))
 })
-
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     
@@ -392,8 +391,8 @@ export {
     changeCurrentPassword, 
     getCurrentUser, 
     updateAccountDetails, 
-    updateAvatar, 
-    updateCover,
+    updateUserAvatar, 
+    updateUserCoverImage,
     getUserChannelProfile,
     getWatchHistory
 }
