@@ -3,6 +3,7 @@ import { apiError } from "../utils/apiError.js"
 import { User } from "../models/user.model.js"
 import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { apiResponse } from "../utils/apiResponse.js"
+import mongoose from "mongoose";
 import jwt from "jsonwebtoken"
 
 const generateAccessAndRefreshTokens = async(userId) => {
@@ -25,7 +26,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     const {username, email, fullName, password } = req.body 
 
-    if([fullName, email, username, password ].some((field) => { field?.trim() === ""})) {
+    if([ fullName, email, username, password ].some((field) => { field?.trim() === ""})) {
         throw new apiError(400, "All fields are required")
     }
 
@@ -190,7 +191,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
 const getCurrentUser = asyncHandler(async (req, res) => {
 
-   return req.status(200).json(200, req.user, "Current user fetched successfully")
+   return res.status(200).json(new apiResponse(200, req.user, "Current user fetched successfully"))
 
 })
 
@@ -307,7 +308,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 },
                 isSubscribed: {
                     $cond: {
-                        if: {$in: [request.user?._id, "$subscribers.subscriber"]},
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
                         then: true,
                         else: false
                     }
@@ -327,8 +328,6 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
             }
         }
     ])
-
-    //console.log(channel)
 
     if(!channel?.length) {
         throw new apiError(404, "Chaneel does not exists")
