@@ -6,9 +6,46 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
-    //TODO: get all videos based on query, sort, pagination
-})
+    let { page = 1, limit = 10, query, sortBy, sortType } = req.query;
+
+    const userId = req.user._id
+    page = parseInt(page);
+    limit = parseInt(limit);
+    if (isNaN(page) || isNaN(limit) || page < 1 || limit < 1) {
+        throw new apiError(400, "Invalid pagination parameters")
+    }
+
+    // Constructing the base query
+    const searchQuery = {};
+
+    if (query.length > 3) {
+        searchQuery.title = { $regex: new RegExp(query, 'i') };
+    } else {
+        // The search query must be at least 3 characters long to proceed with the search. 
+        // This helps ensure that only meaningful search queries are executed against the database.
+        throw new apiError(400, "There must be at least 3 characters to match meaningful result")
+    }
+
+    if (userId) {
+        searchQuery.owner = userId;
+    }
+
+    const sortOptions = {};
+    if (sortBy && sortType) {
+        sortOptions[sortBy] = sortType === 'desc' ? -1 : 1;
+    }
+
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const total = await Video.countDocuments(searchQuery);
+    const videos = await Video.find(searchQuery)
+        .sort(sortOptions)
+        .skip(startIndex)
+        .limit(limit);
+
+    res.status(200).json({ success: true, total, page, limit, videos });
+});
 
 const publishAVideo = asyncHandler(async (req, res) => {
     const { title, description } = req.body
@@ -156,8 +193,23 @@ const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: delete video
 
-    return res.status(200).json("hey there")
+    if( !videoId ) {
+        throw new apiError(400, "Vedio Id is missing in the request")
+    }
 
+    const video = await Video.findById({_id: videoId})
+
+    if(!video.owner.equals(req.user._id)) {
+        throw new apiError(400, "Invalid video request")
+    }
+    
+    const deletedVideo = await Video.deleteOne({ _id: videoId });
+
+    if (deletedVideo.deletedCount === 1) {
+        return res.status(200).json(new apiResponse(200, deletedVideo.deletedCount, "Video deleted successfully"))
+    } else {
+        throw new apiError(500, "Something went wrong while performing delete operation")
+    }
 
 })
 
