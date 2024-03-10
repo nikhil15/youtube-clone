@@ -4,7 +4,6 @@ import {apiError} from "../utils/apiError.js"
 import {apiResponse} from "../utils/apiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
-
 const createPlaylist = asyncHandler(async (req, res) => {
     const {name, description} = req.body
     const userId = req.user._id
@@ -28,8 +27,7 @@ const createPlaylist = asyncHandler(async (req, res) => {
         new apiResponse(200, playlist._id, "Playlist created successfully")
     )
     
-})
-   
+})   
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
     const { userId } = req.params
@@ -51,6 +49,22 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
 const getPlaylistById = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
     //TODO: get playlist by id
+
+    if (!playlistId || playlistId.trim() === '') {
+        throw new apiError(400, "Playlist ID is required");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new apiError(400, "Invalid playlist ID")
+    }
+
+    const playlist = await Playlist.findById(playlistId);
+
+    if (!playlist) {
+        throw new apiError(404, "Playlist not found");
+    }
+
+    return res.status(200).json(new apiResponse(200, playlist, "Playlist fectched successfully"))
 })
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
@@ -59,6 +73,10 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     
     if (!mongoose.Types.ObjectId.isValid(playlistId)) {
         throw new apiError(400, "Invalid playlist ID")
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new apiError(400, "Invalid Video ID")
     }
 
     const playlist = await Playlist.findById(playlistId);
@@ -81,17 +99,81 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     const {playlistId, videoId} = req.params
     // TODO: remove video from playlist
 
+    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new apiError(400, "Invalid playlist ID");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new apiError(400, "Invalid video ID");
+    }
+
+    const playlist = await Playlist.findById(playlistId);
+
+    if (!playlist) {
+        throw new apiError(404, "Playlist not found");
+    }
+
+    const index = playlist.videos.indexOf(videoId);
+    
+    if (index === -1) {
+        throw new apiError(400, "Video not found in the playlist");
+    }
+
+    playlist.videos.splice(index, 1);
+    playlist.save();
+
+    return res.status(200).json( new apiResponse(200, playlist, "Video successfully removed from the playlist"))
 })
 
 const deletePlaylist = asyncHandler(async (req, res) => {
     const {playlistId} = req.params
     // TODO: delete playlist
+    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new apiError(400, "Invalid playlist ID");
+    }
+
+    const playlist = await Playlist.deleteOne(new mongoose.Types.ObjectId(playlistId));
+
+    if (playlist.deletedCount === 1) {
+        return res.status(200).json(new apiResponse(200, playlist.deletedCount, "Playlist deleted successfully"))
+    } else {
+        throw new apiError(500, "Something went wrong while performing delete operation")
+    }
 })
 
 const updatePlaylist = asyncHandler(async (req, res) => {
+
     const {playlistId} = req.params
     const {name, description} = req.body
-    //TODO: update playlist
+
+    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+        throw new apiError(400, "Invalid playlist ID");
+    }
+
+    if([ name, description ].some((field) => { field?.trim() === ""})) {   
+        throw new apiError(400, "All fields are required")
+    }
+
+    const playlistExists = await Playlist.findById(playlistId);
+    if (!playlistExists) {
+        throw new apiError(404, "Playlist not found");
+    }
+
+    const playlist = await Playlist.findByIdAndUpdate(playlistId,
+    {
+        $set: {
+            name,
+            description
+        }
+    },
+    {new: true}
+    )
+
+    if(!playlist) {
+        return res.status(200).json(new apiError(200, "Something went wrong while deleting playlist"))
+    }
+
+    return res.status(200).json(new apiResponse(200, playlist, "Playlist updated successfully"))
 })
 
 export {
