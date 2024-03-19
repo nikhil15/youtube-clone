@@ -170,7 +170,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     )
 
     if(!playlist) {
-        return res.status(200).json(new apiError(200, "Something went wrong while deleting playlist"))
+        return res.status(200).json(new apiError(200, "Something went wrong while updating playlist"))
     }
 
     return res.status(200).json(new apiResponse(200, playlist, "Playlist updated successfully"))
