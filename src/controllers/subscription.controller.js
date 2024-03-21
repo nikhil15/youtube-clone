@@ -91,9 +91,58 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 const getSubscribedChannels = asyncHandler(async (req, res) => {
     const { subscriberId } = req.params
  
+    if(!isValidObjectId(subscriberId)) {
+        throw new apiError(400, "Invalid channelId");
+    }
 
-    
-    return res.status(200).json(subscriberId)
+    if (req.user?._id.toString() != subscriberId) {
+        throw new ApiError(400, "You are not allowed to get channels subscribed by other users")
+    }
+
+    const subscribedChannel = await Subscription.aggregate([  
+        {
+            $match: {
+                subscriber: new mongoose.Types.ObjectId(subscriberId),
+            },
+        },
+        {
+            $facet: {
+                channelSubscribedTo: [
+                    {   
+                        $lookup: {
+                            from: "users",
+                            localField: "channel",
+                            foreignField: "_id",
+                            as: "channel",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        username: 1,
+                                        fullName: 1,
+                                        avatar: 1,
+                                        createdAt: 1,
+                                        updatedAt: 1,
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            channel: {
+                                $first: "$channel"
+                            }
+                        }
+                    }
+                ],
+                channelSubscribedToCount: [
+                    { $count: "channel" }
+                ]
+            }
+        } 
+    ])
+
+    return res.status(200).json(subscribedChannel)
 })
 
 export {
